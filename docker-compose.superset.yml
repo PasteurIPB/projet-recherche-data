@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # Redis pour Superset
+  redis_superset:
+    image: redis:6
+    container_name: superset_redis
+    restart: unless-stopped
+    networks:
+      - research-data-network
+
+  # Apache Superset
+  superset:
+    image: apache/superset:latest
+    container_name: superset
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis_superset
+    environment:
+      - SUPERSET_SECRET_KEY=mon_secret_superset
+      - SQLALCHEMY_DATABASE_URI=postgresql://admin:motdepasse_securise@postgres:5432/superset
+      - REDIS_HOST=redis_superset
+      - REDIS_PORT=6379
+    volumes:
+      - ./superset_config.py:/app/pythonpath/superset_config.py
+    networks:
+      - research-data-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.superset.rule=Host(`superset.localhost`)"
+      - "traefik.http.services.superset.loadbalancer.server.port=8088"
