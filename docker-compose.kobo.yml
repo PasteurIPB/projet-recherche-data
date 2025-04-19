@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # MongoDB pour KoboToolbox
+  mongo:
+    image: mongo:4.4
+    container_name: kobo_mongo
+    restart: unless-stopped
+    volumes:
+      - kobo_mongo_data:/data/db
+    networks:
+      - research-data-network
+
+  # Services KoboToolbox
+  kobocat:
+    image: kobotoolbox/kobocat:latest
+    container_name: kobocat
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - mongo
+    volumes:
+      - kobocat_media:/srv/src/kobocat/media
+    environment:
+      - KOBOCAT_BROKER_URL=redis://redis:6379/1
+      - KOBOCAT_DATABASE_URL=postgresql://admin:motdepasse_securise@postgres:5432/kobocat
+      - MONGO_DB_URL=mongodb://mongo:27017/formhub
+      - KPI_URL=http://kpi:8000
+    networks:
+      - research-data-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kobocat.rule=Host(`collect.localhost`)"
+      - "traefik.http.services.kobocat.loadbalancer.server.port=8000"
+
+  kpi:
+    image: kobotoolbox/kpi:latest
+    container_name: kpi
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - mongo
+    volumes:
+      - kpi_media:/srv/src/kpi/media
+    environment:
+      - KPI_BROKER_URL=redis://redis:6379/1
+      - KPI_DATABASE_URL=postgresql://admin:motdepasse_securise@postgres:5432/kpi
+      - MONGO_DB_URL=mongodb://mongo:27017/formhub
+      - KOBOCAT_URL=http://kobocat:8000
+    networks:
+      - research-data-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kpi.rule=Host(`kobo.localhost`)"
+      - "traefik.http.services.kpi.loadbalancer.server.port=8000"
+
+  # Redis pour la communication entre les services
+  redis:
+    image: redis:6
+    container_name: kobo_redis
+    restart: unless-stopped
+    networks:
+      - research-data-network
+
+volumes:
+  kobo_mongo_data:
+  kobocat_media:
+  kpi_media:
