@@ -46,3 +46,10 @@ volumes:
 networks:
   research-data-network:
     driver: bridge
+
+volumes:
+  postgres_data:
+  kobo_mongo_data:
+  kobocat_media:
+  kpi_media:
+  solr_data:

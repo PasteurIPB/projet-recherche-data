@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Solr pour l'indexation dans Dataverse
+  solr:
+    image: iqss/solr-k8s:4.15.4
+    container_name: dataverse_solr
+    restart: unless-stopped
+    volumes:
+      - solr_data:/opt/solr/server/solr/collection1/data
+    networks:
+      - research-data-network
+
+  # Dataverse
+  dataverse:
+    image: iqss/dataverse-k8s:4.20
+    container_name: dataverse
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - solr
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DATABASE=dataverse
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=motdepasse_securise
+      - SOLR_SERVICE_HOST=solr
+      - SOLR_SERVICE_PORT=8983
+      - DATAVERSE_URL=http://localhost:8080
+      - DATAVERSE_SERVICE_HOST=0.0.0.0
+      - DATAVERSE_SERVICE_PORT=8080
+    networks:
+      - research-data-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dataverse.rule=Host(`dataverse.localhost`)"
+      - "traefik.http.services.dataverse.loadbalancer.server.port=8080"
+
+volumes:
+  solr_data:
